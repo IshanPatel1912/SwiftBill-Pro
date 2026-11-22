@@ -1,249 +1,221 @@
 import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
 import {
-  BarChart3,
-  TrendingUp,
-  CreditCard,
-  ShoppingBag,
-  IndianRupee,
-  Calendar,
-  Sparkles,
-  ArrowUpRight
+  LineChart,
+  Download,
+  Info
 } from 'lucide-react';
 
 export const AnalyticsView = () => {
-  const { invoices, items } = useStore();
+  const { sales, purchases, showToast } = useStore();
 
-  const totalRevenue = invoices.reduce((s, i) => s + i.grandTotal, 0);
-  const totalBills = invoices.length;
-  const avgBasket = totalBills > 0 ? totalRevenue / totalBills : 0;
-  const estimatedProfit = totalRevenue * 0.22; // ~22% average gross profit margin
+  const [hoveredItem, setHoveredItem] = useState(null);
 
-  // Top Products breakdown
-  const itemCounts = {};
-  invoices.forEach((inv) => {
-    inv.items.forEach((it) => {
-      if (!itemCounts[it.name]) {
-        itemCounts[it.name] = { name: it.name, qty: 0, revenue: 0 };
+  // Aggregate sales by item
+  const salesMap = {};
+  sales.forEach((s) => {
+    if (s.isDeleted) return;
+    s.items?.forEach((it) => {
+      if (!salesMap[it.name]) {
+        salesMap[it.name] = { name: it.name, soldQty: 0, soldAmt: 0 };
       }
-      itemCounts[it.name].qty += it.qty;
-      itemCounts[it.name].revenue += it.total;
+      salesMap[it.name].soldQty += it.qty;
+      salesMap[it.name].soldAmt += it.amount;
     });
   });
 
-  const topProducts = Object.values(itemCounts)
-    .sort((a, b) => b.revenue - a.revenue)
-    .slice(0, 5);
-
-  // Payment Breakdown
-  const paymentModes = { UPI: 0, Cash: 0, Card: 0 };
-  invoices.forEach((inv) => {
-    const mode = inv.paymentMode?.includes('UPI') ? 'UPI' : inv.paymentMode || 'Cash';
-    paymentModes[mode] = (paymentModes[mode] || 0) + inv.grandTotal;
+  // Calculate avg costs from purchases
+  const costMap = {};
+  purchases.forEach((p) => {
+    if (!costMap[p.itemName]) {
+      costMap[p.itemName] = { qty: 0, cost: 0 };
+    }
+    costMap[p.itemName].qty += p.quantity;
+    costMap[p.itemName].cost += p.costPrice * p.quantity;
   });
 
-  // Daily revenue trend (last 7 days simulation based on invoices)
-  const daysData = [
-    { day: 'Mon', revenue: 1420 },
-    { day: 'Tue', revenue: 2150 },
-    { day: 'Wed', revenue: 1890 },
-    { day: 'Thu', revenue: 2650 },
-    { day: 'Fri', revenue: 3120 },
-    { day: 'Sat', revenue: 4480 },
-    { day: 'Sun (Today)', revenue: totalRevenue > 0 ? Math.round(totalRevenue) : 3860 },
+  const chartData = Object.values(salesMap).map((it) => {
+    const avgSell = it.soldQty > 0 ? it.soldAmt / it.soldQty : 0;
+    const purInfo = costMap[it.name];
+    const avgCost = purInfo && purInfo.qty > 0 ? purInfo.cost / purInfo.qty : avgSell * 0.75;
+    const profitUnit = avgSell - avgCost;
+    const totalCost = avgCost * it.soldQty;
+    const totalProfit = it.soldAmt - totalCost;
+
+    return {
+      name: it.name,
+      soldQty: it.soldQty,
+      soldAmt: it.soldAmt,
+      avgSell,
+      avgCost,
+      profitUnit,
+      totalCost,
+      totalProfit,
+    };
+  });
+
+  const totalSalesAll = chartData.reduce((s, x) => s + x.soldAmt, 0);
+
+  const colors = [
+    '#FF3333', '#3366FF', '#FF33CC', '#33CC33',
+    '#EAB308', '#06B6D4', '#F97316', '#A855F7',
+    '#EC4899', '#10B981'
   ];
-  const maxRev = Math.max(...daysData.map((d) => d.revenue));
+
+  const handleExportPdf = () => {
+    window.print();
+    showToast('Exporting analytics report...');
+  };
+
+  const activeStats = hoveredItem || (chartData.length > 0 ? chartData[0] : null);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
-      {/* Heading */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-slate-200 dark:border-slate-800">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center space-x-2">
-            <BarChart3 className="w-5 h-5 text-brand-600 dark:text-brand-400" />
-            <span>Store Performance & Sales Analytics</span>
-          </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Key retail performance indicators, basket size, and revenue breakdown.
-          </p>
-        </div>
+    <div className="p-4 sm:p-6 space-y-4 max-w-full">
+      {/* Top Title & Export Button (Matching analytics_tab.py) */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm flex items-center justify-between">
+        <h1 className="text-base font-bold text-slate-900 dark:text-white">
+          Sales Analytics & Profit Overview
+        </h1>
+
+        <button
+          onClick={handleExportPdf}
+          className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-sm transition-colors"
+        >
+          <Download className="w-4 h-4" />
+          <span>📄 Export Analytics Report (PDF)</span>
+        </button>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Revenue */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-            Total Sales Realized
-          </span>
-          <div className="text-2xl font-extrabold font-mono text-slate-900 dark:text-white mt-1">
-            ₹{totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+      {/* Info Panel (Hover Stats matching analytics_tab.py QGridLayout) */}
+      {activeStats && (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm">
+          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center space-x-1.5">
+            <Info className="w-3.5 h-3.5" />
+            <span>Product Profit & Cost Analysis</span>
           </div>
-          <div className="flex items-center space-x-1 text-emerald-600 dark:text-emerald-400 text-xs font-semibold mt-2">
-            <TrendingUp className="w-3.5 h-3.5" />
-            <span>+14.2% vs previous period</span>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+            <div>
+              <span className="text-slate-400 block">Product:</span>
+              <span className="font-bold text-sm text-slate-900 dark:text-white truncate block">
+                {activeStats.name}
+              </span>
+            </div>
+            <div>
+              <span className="text-slate-400 block">Sold Qty:</span>
+              <span className="font-mono font-bold text-sm text-slate-900 dark:text-white">
+                {activeStats.soldQty} units
+              </span>
+            </div>
+            <div>
+              <span className="text-slate-400 block">Avg Sell Price:</span>
+              <span className="font-mono font-bold text-sm text-slate-900 dark:text-white">
+                ₹{activeStats.avgSell.toFixed(2)}
+              </span>
+            </div>
+            <div>
+              <span className="text-slate-400 block">Avg Cost Price:</span>
+              <span className="font-mono font-bold text-sm text-slate-500">
+                ₹{activeStats.avgCost.toFixed(2)}
+              </span>
+            </div>
+
+            <div>
+              <span className="text-slate-400 block">Total Sales:</span>
+              <span className="font-mono font-bold text-sm text-brand-600 dark:text-brand-400">
+                ₹{activeStats.soldAmt.toFixed(2)}
+              </span>
+            </div>
+            <div>
+              <span className="text-slate-400 block">Total Cost (Sold):</span>
+              <span className="font-mono font-bold text-sm text-slate-500">
+                ₹{activeStats.totalCost.toFixed(2)}
+              </span>
+            </div>
+            <div>
+              <span className="text-slate-400 block">Profit / Unit:</span>
+              <span className="font-mono font-bold text-sm text-emerald-600 dark:text-emerald-400">
+                ₹{activeStats.profitUnit.toFixed(2)}
+              </span>
+            </div>
+            <div>
+              <span className="text-slate-400 block">Total Profit:</span>
+              <span className="font-mono font-bold text-base text-emerald-600 dark:text-emerald-400">
+                ₹{activeStats.totalProfit.toFixed(2)}
+              </span>
+            </div>
           </div>
         </div>
+      )}
 
-        {/* Card 2: Invoices */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-            Invoices Generated
-          </span>
-          <div className="text-2xl font-extrabold font-mono text-slate-900 dark:text-white mt-1">
-            {totalBills}
+      {/* Donut Chart View (Matching QChartView in analytics_tab.py) */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm min-h-[350px] flex flex-col items-center justify-center">
+        {chartData.length === 0 ? (
+          <div className="text-center py-12 text-slate-400 text-xs">
+            No sales data available to plot analytics. Complete sales in the POS tab to view the profit donut chart.
           </div>
-          <div className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-            Successful checkout transactions
-          </div>
-        </div>
+        ) : (
+          <div className="w-full flex flex-col md:flex-row items-center justify-around gap-6">
+            {/* SVG Donut Visualizer */}
+            <div className="relative w-64 h-64 flex items-center justify-center">
+              <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                {(() => {
+                  let accumulatedPercent = 0;
+                  return chartData.map((slice, i) => {
+                    const percent = totalSalesAll > 0 ? (slice.soldAmt / totalSalesAll) * 100 : 0;
+                    const strokeDasharray = `${percent} ${100 - percent}`;
+                    const strokeDashoffset = -accumulatedPercent;
+                    accumulatedPercent += percent;
 
-        {/* Card 3: Avg Basket */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-            Average Basket Size
-          </span>
-          <div className="text-2xl font-extrabold font-mono text-slate-900 dark:text-white mt-1">
-            ₹{avgBasket.toFixed(2)}
-          </div>
-          <div className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-            Per transaction spending
-          </div>
-        </div>
+                    return (
+                      <circle
+                        key={i}
+                        cx="50"
+                        cy="50"
+                        r="38"
+                        fill="transparent"
+                        stroke={colors[i % colors.length]}
+                        strokeWidth="20"
+                        strokeDasharray={strokeDasharray}
+                        strokeDashoffset={strokeDashoffset}
+                        className="cursor-pointer transition-all hover:opacity-80"
+                        onMouseEnter={() => setHoveredItem(slice)}
+                      />
+                    );
+                  });
+                })()}
+              </svg>
+              <div className="absolute text-center pointer-events-none">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Total Sales</span>
+                <span className="font-mono font-bold text-sm text-slate-900 dark:text-white">
+                  ₹{totalSalesAll.toFixed(2)}
+                </span>
+              </div>
+            </div>
 
-        {/* Card 4: Profit Margin */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-            Estimated Gross Margin
-          </span>
-          <div className="text-2xl font-extrabold font-mono text-emerald-600 dark:text-emerald-400 mt-1">
-            ₹{estimatedProfit.toFixed(2)}
-          </div>
-          <div className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-            ~22.0% blended gross profit
-          </div>
-        </div>
-      </div>
-
-      {/* Charts & Breakdown Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left (8 cols): Revenue Trend Chart */}
-        <div className="lg:col-span-8 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-              7-Day Sales Revenue Trend
-            </h2>
-            <span className="text-[10px] text-slate-400 font-mono">Daily Store Totals</span>
-          </div>
-
-          {/* Clean SVG / Bar Visualizer */}
-          <div className="h-56 flex items-end justify-between pt-8 px-4 gap-3 border-b border-slate-200 dark:border-slate-800">
-            {daysData.map((d, idx) => {
-              const heightPct = Math.round((d.revenue / maxRev) * 100);
-              const isToday = idx === daysData.length - 1;
-              return (
-                <div key={d.day} className="flex-1 flex flex-col items-center group">
-                  <span className="text-[10px] font-mono font-semibold text-slate-600 dark:text-slate-300 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    ₹{d.revenue}
+            {/* Legend Breakdown */}
+            <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+              {chartData.map((slice, i) => (
+                <div
+                  key={i}
+                  onMouseEnter={() => setHoveredItem(slice)}
+                  className="flex items-center space-x-2 text-xs cursor-pointer p-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                >
+                  <span
+                    className="w-3.5 h-3.5 rounded-full shrink-0"
+                    style={{ backgroundColor: colors[i % colors.length] }}
+                  ></span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[140px]">
+                    {slice.name}
                   </span>
-                  <div
-                    className={`w-full rounded-t-xl transition-all duration-300 ${
-                      isToday
-                        ? 'bg-gradient-to-t from-brand-600 to-sky-400 shadow-md shadow-brand-500/20'
-                        : 'bg-slate-200 dark:bg-slate-700/80 hover:bg-brand-400'
-                    }`}
-                    style={{ height: `${heightPct}%` }}
-                  ></div>
-                  <span className={`text-[10px] mt-2 font-medium truncate max-w-full ${isToday ? 'text-brand-600 dark:text-brand-400 font-bold' : 'text-slate-500'}`}>
-                    {d.day}
+                  <span className="font-mono text-slate-500 ml-auto">
+                    ₹{slice.soldAmt.toFixed(2)}
                   </span>
                 </div>
-              );
-            })}
-          </div>
-
-          <div className="flex justify-between items-center text-xs text-slate-500 pt-2">
-            <span>Peak checkout traffic occurs on weekends</span>
-            <span className="font-semibold text-slate-700 dark:text-slate-300">Target: ₹5,000 / day</span>
-          </div>
-        </div>
-
-        {/* Right (4 cols): Payment Mode Distribution */}
-        <div className="lg:col-span-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-          <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-            Payment Mode Share
-          </h2>
-
-          <div className="space-y-3 pt-2">
-            {Object.entries(paymentModes).map(([mode, amt]) => {
-              const pct = totalRevenue > 0 ? Math.round((amt / totalRevenue) * 100) : 0;
-              const color = mode === 'UPI' ? 'bg-indigo-600' : mode === 'Cash' ? 'bg-emerald-600' : 'bg-sky-600';
-
-              return (
-                <div key={mode} className="space-y-1">
-                  <div className="flex justify-between text-xs font-medium">
-                    <span className="text-slate-800 dark:text-slate-200">{mode}</span>
-                    <span className="font-mono font-bold text-slate-900 dark:text-white">
-                      ₹{amt.toFixed(2)} ({pct}%)
-                    </span>
-                  </div>
-                  <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }}></div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 p-3 rounded-xl">
-            <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 block mb-1">
-              Digital Payment Insight
-            </span>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              UPI transactions via QR Code make up the majority of customer checkouts, reducing cash register variance.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Top 5 Best-Selling Products */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-        <div className="px-5 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/30">
-          <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-            Top 5 Fast-Moving Items
-          </span>
-          <span className="text-[11px] text-slate-400 font-mono">By Total Revenue</span>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-[10px] border-b border-slate-200 dark:border-slate-800">
-              <tr>
-                <th className="py-2.5 px-4 w-12">#</th>
-                <th className="py-2.5 px-4">Product Name</th>
-                <th className="py-2.5 px-4 w-32 text-center">Units Sold</th>
-                <th className="py-2.5 px-4 w-36 text-right">Revenue Contributed</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {topProducts.map((p, i) => (
-                <tr key={p.name} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
-                  <td className="py-3 px-4 font-mono font-bold text-slate-400">
-                    0{i + 1}
-                  </td>
-                  <td className="py-3 px-4 font-semibold text-slate-900 dark:text-white">
-                    {p.name}
-                  </td>
-                  <td className="py-3 px-4 text-center font-mono font-medium text-slate-700 dark:text-slate-300">
-                    {p.qty} units
-                  </td>
-                  <td className="py-3 px-4 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                    ₹{p.revenue.toFixed(2)}
-                  </td>
-                </tr>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

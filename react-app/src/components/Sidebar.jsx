@@ -2,117 +2,149 @@ import React from 'react';
 import { useStore } from '../context/StoreContext';
 import {
   ShoppingCart,
-  Package,
+  Tag,
   Truck,
   Receipt,
   Search,
   Boxes,
-  BarChart3,
+  LineChart,
   PieChart,
+  Home,
   Users,
   Settings,
-  Store,
+  ChevronLeft,
   ChevronRight,
-  Sparkles
+  LogOut,
+  Store
 } from 'lucide-react';
 
 export const Sidebar = () => {
-  const { activeTab, setActiveTab, businessDetails, inventory } = useStore();
-
-  const lowStockCount = inventory.filter((i) => i.stock <= i.reorderLevel).length;
+  const {
+    activeTab,
+    setActiveTab,
+    isSidebarCollapsed,
+    toggleSidebar,
+    businessDetails,
+    currentUser,
+    logout
+  } = useStore();
 
   const navItems = [
-    { id: 'pos', label: 'POS / Sell', icon: ShoppingCart, hotkey: 'F1', badge: null },
-    { id: 'items', label: 'Items Catalog', icon: Package, hotkey: null, badge: null },
-    { id: 'purchase', label: 'Purchase', icon: Truck, hotkey: null, badge: null },
-    { id: 'expenditure', label: 'Expenditure', icon: Receipt, hotkey: null, badge: null },
-    { id: 'find_bill', label: 'Find Bill', icon: Search, hotkey: null, badge: null },
-    { id: 'inventory', label: 'Inventory', icon: Boxes, hotkey: null, badge: lowStockCount > 0 ? `${lowStockCount} Low` : null, badgeColor: 'bg-amber-500' },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3, hotkey: null, badge: null },
-    { id: 'portfolio', label: 'Portfolio', icon: PieChart, hotkey: null, badge: null },
-    { id: 'customers', label: 'Customers', icon: Users, hotkey: null, badge: null },
-    { id: 'settings', label: 'Settings', icon: Settings, hotkey: null, badge: null },
+    { id: 'pos', label: 'POS / Sell', icon: ShoppingCart },
+    { id: 'item', label: 'Items', icon: Tag },
+    { id: 'purchase', label: 'Purchase', icon: Truck },
+    { id: 'expense', label: 'Expenditure', icon: Receipt },
+    { id: 'find_bill', label: 'Find Bill', icon: Search },
+    { id: 'inventory', label: 'Inventory', icon: Boxes },
+    { id: 'analytics', label: 'Analytics', icon: LineChart },
+    { id: 'portfolio', label: 'Portfolio', icon: PieChart },
+    { id: 'dashboard', label: 'Dashboard', icon: Home },
+    { id: 'customer', label: 'Customers', icon: Users },
+    { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
   return (
-    <aside className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between select-none shrink-0 h-screen sticky top-0">
+    <aside
+      className={`bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between select-none shrink-0 h-screen sticky top-0 transition-all duration-200 ${
+        isSidebarCollapsed ? 'w-16' : 'w-56'
+      }`}
+    >
       <div>
-        {/* Brand Header */}
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-sky-400 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
-              <Store className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="flex items-center space-x-1.5">
-                <span className="font-bold text-base text-slate-900 dark:text-white tracking-tight">
-                  SwiftBill
-                </span>
-                <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-brand-500/10 text-brand-600 dark:text-brand-400 uppercase tracking-wider">
-                  PRO
-                </span>
+        {/* Header & Toggle Button */}
+        <div className="h-16 px-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+          {!isSidebarCollapsed && (
+            <div className="flex items-center space-x-2.5 overflow-hidden pl-1">
+              <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center text-white shrink-0 font-bold shadow-sm">
+                <Store className="w-4 h-4" />
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[130px]" title={businessDetails.name}>
-                {businessDetails.name}
-              </p>
+              <div className="truncate">
+                <div className="font-bold text-xs text-slate-900 dark:text-white leading-tight truncate">
+                  {businessDetails.name || 'Convenience Store'}
+                </div>
+                <div className="text-[10px] text-slate-400 font-mono">POS System</div>
+              </div>
             </div>
-          </div>
+          )}
+
+          {isSidebarCollapsed && (
+            <div className="w-full flex justify-center">
+              <button
+                onClick={toggleSidebar}
+                title="Expand Navigation (Get full labels)"
+                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+          )}
+
+          {!isSidebarCollapsed && (
+            <button
+              onClick={toggleSidebar}
+              title="Collapse Navigation (Get more screen space)"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
-        {/* Navigation List */}
-        <div className="p-3 space-y-1">
-          <div className="px-3 py-1.5 text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-            Store Management
-          </div>
+        {/* Tab Navigation Items */}
+        <div className="p-2 space-y-1">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
+
             return (
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all group ${
+                title={isSidebarCollapsed ? item.label : undefined}
+                className={`w-full flex items-center rounded-xl text-xs font-medium transition-all ${
+                  isSidebarCollapsed ? 'justify-center p-2.5' : 'space-x-3 px-3 py-2.5'
+                } ${
                   isActive
-                    ? 'bg-brand-600 text-white shadow-sm shadow-brand-600/30 font-semibold'
-                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-brand-600 text-white font-bold shadow-sm shadow-brand-600/30'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                <div className="flex items-center space-x-3">
-                  <Icon className={`w-4 h-4 transition-transform group-hover:scale-110 ${isActive ? 'text-white' : 'text-slate-400 dark:text-slate-500'}`} />
-                  <span>{item.label}</span>
-                </div>
-                <div className="flex items-center space-x-1.5">
-                  {item.badge && (
-                    <span className={`text-[10px] font-semibold text-white px-1.5 py-0.5 rounded-full ${item.badgeColor}`}>
-                      {item.badge}
-                    </span>
-                  )}
-                  {item.hotkey && (
-                    <span className={`text-[10px] px-1 py-0.5 rounded font-mono ${isActive ? 'bg-brand-700 text-brand-100' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
-                      {item.hotkey}
-                    </span>
-                  )}
-                </div>
+                <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                {!isSidebarCollapsed && <span className="truncate">{item.label}</span>}
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* System Status / Terminal Badge */}
-      <div className="p-3 border-t border-slate-200 dark:border-slate-800">
-        <div className="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-200 dark:border-slate-750">
-          <div className="flex items-center justify-between mb-1.5">
-            <div className="flex items-center space-x-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">Terminal Ready</span>
+      {/* User Info & Logout Button */}
+      <div className="p-2 border-t border-slate-200 dark:border-slate-800">
+        {!isSidebarCollapsed ? (
+          <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/60">
+            <div className="truncate">
+              <span className="text-[10px] text-slate-400 uppercase font-bold block">User:</span>
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate block">
+                {currentUser ? currentUser.username : 'admin'}
+              </span>
             </div>
-            <span className="text-[10px] text-slate-400 font-mono">v2.5</span>
+            <button
+              onClick={logout}
+              title="Logout from POS"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400">
-            Thermal ESC/POS & WhatsApp ready
-          </p>
-        </div>
+        ) : (
+          <div className="flex justify-center">
+            <button
+              onClick={logout}
+              title="Logout"
+              className="p-2 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
     </aside>
   );

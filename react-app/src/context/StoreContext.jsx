@@ -1,14 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import {
-  initialBusinessDetails,
-  initialItems,
-  initialInventory,
-  initialCustomers,
-  initialInvoices,
-  initialPurchases,
-  initialExpenditures,
-  initialUsers
-} from '../data/mockData';
 
 const StoreContext = createContext(null);
 
@@ -19,32 +9,65 @@ export const StoreProvider = ({ children }) => {
       const saved = localStorage.getItem(`swiftbill_${key}`);
       return saved ? JSON.parse(saved) : fallback;
     } catch (e) {
-      console.error(`Error loading ${key} from localStorage`, e);
       return fallback;
     }
   };
 
-  const [activeTab, setActiveTab] = useState('pos'); // pos, items, inventory, purchase, expenditure, find_bill, analytics, portfolio, customers, settings
-  const [theme, setTheme] = useState(() => localStorage.getItem('swiftbill_theme') || 'system');
-  
-  const [businessDetails, setBusinessDetails] = useState(() => loadState('business', initialBusinessDetails));
-  const [items, setItems] = useState(() => loadState('items', initialItems));
-  const [inventory, setInventory] = useState(() => loadState('inventory', initialInventory));
-  const [customers, setCustomers] = useState(() => loadState('customers', initialCustomers));
-  const [invoices, setInvoices] = useState(() => loadState('invoices', initialInvoices));
-  const [purchases, setPurchases] = useState(() => loadState('purchases', initialPurchases));
-  const [expenditures, setExpenditures] = useState(() => loadState('expenditures', initialExpenditures));
-  const [users, setUsers] = useState(() => loadState('users', initialUsers));
+  // 1. Authentication State
+  const [currentUser, setCurrentUser] = useState(() => {
+    const saved = localStorage.getItem('swiftbill_auth_user');
+    return saved ? JSON.parse(saved) : null;
+  });
 
-  // Modal States
-  const [receiptModalInvoice, setReceiptModalInvoice] = useState(null);
-  const [a4ModalInvoice, setA4ModalInvoice] = useState(null);
+  // 2. Navigation State
+  const [activeTab, setActiveTab] = useState('pos'); // pos, item, purchase, expense, find_bill, inventory, analytics, portfolio, dashboard, customer, settings
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    return localStorage.getItem('swiftbill_sidebar_collapsed') === 'true';
+  });
+  const [theme, setTheme] = useState(() => localStorage.getItem('swiftbill_theme') || 'system');
+
+  // 3. Clean Initial State (No fake demo records)
+  const defaultBusiness = {
+    name: "Convenience Store",
+    address: "123 Business Street, City Center",
+    phone: "+91 9876543210",
+    owner: "Store Owner",
+    printer: "Default Windows Printer",
+    thermalRollSize: "80mm (Standard POS)",
+    themeMode: "system",
+    whatsappEnabled: true,
+    whatsappStatus: "Connected",
+  };
+
+  const defaultUsers = [
+    { id: 1, username: "admin", password: "admin" }
+  ];
+
+  const [businessDetails, setBusinessDetails] = useState(() => loadState('business', defaultBusiness));
+  const [users, setUsers] = useState(() => loadState('users', defaultUsers));
+
+  // Store data tables - starting clean
+  const [items, setItems] = useState(() => loadState('items', []));
+  const [inventory, setInventory] = useState(() => loadState('inventory', []));
+  const [purchases, setPurchases] = useState(() => loadState('purchases', []));
+  const [expenditures, setExpenditures] = useState(() => loadState('expenditures', []));
+  const [customers, setCustomers] = useState(() => loadState('customers', []));
+  const [sales, setSales] = useState(() => loadState('sales', []));
+  const [heldBills, setHeldBills] = useState(() => loadState('held_bills', []));
+
+  // Modals & UI Feedback
+  const [receiptModalSale, setReceiptModalSale] = useState(null);
+  const [a4ModalSale, setA4ModalSale] = useState(null);
   const [toast, setToast] = useState(null);
 
-  // Sync with LocalStorage
+  // Sync to LocalStorage
   useEffect(() => {
     localStorage.setItem('swiftbill_business', JSON.stringify(businessDetails));
   }, [businessDetails]);
+
+  useEffect(() => {
+    localStorage.setItem('swiftbill_users', JSON.stringify(users));
+  }, [users]);
 
   useEffect(() => {
     localStorage.setItem('swiftbill_items', JSON.stringify(items));
@@ -55,14 +78,6 @@ export const StoreProvider = ({ children }) => {
   }, [inventory]);
 
   useEffect(() => {
-    localStorage.setItem('swiftbill_customers', JSON.stringify(customers));
-  }, [customers]);
-
-  useEffect(() => {
-    localStorage.setItem('swiftbill_invoices', JSON.stringify(invoices));
-  }, [invoices]);
-
-  useEffect(() => {
     localStorage.setItem('swiftbill_purchases', JSON.stringify(purchases));
   }, [purchases]);
 
@@ -71,10 +86,22 @@ export const StoreProvider = ({ children }) => {
   }, [expenditures]);
 
   useEffect(() => {
-    localStorage.setItem('swiftbill_users', JSON.stringify(users));
-  }, [users]);
+    localStorage.setItem('swiftbill_customers', JSON.stringify(customers));
+  }, [customers]);
 
-  // Handle Theme Switching
+  useEffect(() => {
+    localStorage.setItem('swiftbill_sales', JSON.stringify(sales));
+  }, [sales]);
+
+  useEffect(() => {
+    localStorage.setItem('swiftbill_held_bills', JSON.stringify(heldBills));
+  }, [heldBills]);
+
+  useEffect(() => {
+    localStorage.setItem('swiftbill_sidebar_collapsed', isSidebarCollapsed ? 'true' : 'false');
+  }, [isSidebarCollapsed]);
+
+  // Theme Management
   useEffect(() => {
     localStorage.setItem('swiftbill_theme', theme);
     const root = document.documentElement;
@@ -83,7 +110,6 @@ export const StoreProvider = ({ children }) => {
     } else if (theme === 'light') {
       root.classList.remove('dark');
     } else {
-      // System default
       if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
         root.classList.add('dark');
       } else {
@@ -94,188 +120,360 @@ export const StoreProvider = ({ children }) => {
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
-    setTimeout(() => setToast(null), 3500);
+    setTimeout(() => setToast(null), 3000);
   };
 
-  // Add Item to Master Catalog
-  const addItem = (item) => {
-    const newItem = {
-      ...item,
-      id: Date.now(),
-      code: item.code.trim(),
-    };
-    setItems((prev) => [...prev, newItem]);
-    
-    // Also create inventory record if not present
-    setInventory((prev) => [
-      ...prev,
-      {
-        itemCode: newItem.code,
-        name: newItem.name,
-        stock: parseInt(item.initialStock || 0),
-        purchaseRate: parseFloat(item.purchaseRate || 0),
-        sellingPrice: parseFloat(item.mrp || 0),
-        reorderLevel: 10,
-        unit: newItem.unit || 'pcs'
+  // Auth Methods
+  const login = (username, password) => {
+    const found = users.find(
+      (u) => u.username.toLowerCase() === username.trim().toLowerCase() && u.password === password
+    );
+    if (found) {
+      setCurrentUser(found);
+      localStorage.setItem('swiftbill_auth_user', JSON.stringify(found));
+      showToast(`Welcome back, ${found.username}!`);
+      return true;
+    }
+    return false;
+  };
+
+  const logout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem('swiftbill_auth_user');
+    showToast('Logged out successfully', 'info');
+  };
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(!isSidebarCollapsed);
+  };
+
+  // Item Management (ItemTab)
+  const saveItem = (item) => {
+    setItems((prev) => {
+      const idx = prev.findIndex((i) => i.id === item.id);
+      if (idx >= 0) {
+        const updated = [...prev];
+        updated[idx] = item;
+        return updated;
       }
-    ]);
-    showToast(`Item "${newItem.name}" added successfully!`);
-  };
-
-  const updateItem = (id, updated) => {
-    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...updated } : it)));
-    showToast('Item updated successfully!');
+      return [...prev, { ...item, id: Date.now() }];
+    });
+    showToast('Item saved to catalog!');
   };
 
   const deleteItem = (id) => {
-    const it = items.find((x) => x.id === id);
-    setItems((prev) => prev.filter((x) => x.id !== id));
-    if (it) {
-      setInventory((prev) => prev.filter((inv) => inv.itemCode !== it.code));
-    }
-    showToast('Item removed from catalog', 'info');
+    setItems((prev) => prev.filter((i) => i.id !== id));
+    showToast('Item deleted', 'info');
   };
 
-  // Adjust Inventory Stock
-  const adjustStock = (itemCode, newQty) => {
-    setInventory((prev) =>
-      prev.map((inv) => (inv.itemCode === itemCode ? { ...inv, stock: Math.max(0, newQty) } : inv))
-    );
-    showToast('Stock quantity updated!');
-  };
-
-  // Create Bill / Invoice
-  const createInvoice = (invoiceData) => {
-    const newInv = {
-      ...invoiceData,
+  // Purchase Management (PurchaseTab)
+  const addPurchase = (purchaseData, addToInventory = true) => {
+    const newPur = {
+      ...purchaseData,
       id: Date.now(),
-      invoiceNo: `INV-${1000 + invoices.length + 1}`,
-      date: new Date().toISOString().split('T')[0],
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      dateTime: new Date().toISOString(),
+      dateStr: new Date().toLocaleDateString('en-GB'), // DD-MM-YYYY
+    };
+    setPurchases((prev) => [newPur, ...prev]);
+
+    if (addToInventory) {
+      setInventory((prev) => {
+        const existing = prev.find(
+          (inv) => inv.itemCode === newPur.itemCode || inv.itemName.toLowerCase() === newPur.itemName.toLowerCase()
+        );
+        if (existing) {
+          return prev.map((inv) =>
+            inv.id === existing.id
+              ? {
+                  ...inv,
+                  availableQty: inv.availableQty + newPur.quantity,
+                  costPrice: newPur.costPrice,
+                  mrp: newPur.mrp,
+                  stockValue: (inv.availableQty + newPur.quantity) * newPur.costPrice,
+                }
+              : inv
+          );
+        } else {
+          return [
+            ...prev,
+            {
+              id: Date.now(),
+              itemCode: newPur.itemCode,
+              itemName: newPur.itemName,
+              availableQty: newPur.quantity,
+              costPrice: newPur.costPrice,
+              mrp: newPur.mrp,
+              stockValue: newPur.quantity * newPur.costPrice,
+            },
+          ];
+        }
+      });
+    }
+    showToast('Stock intake recorded successfully!');
+  };
+
+  const deletePurchase = (id) => {
+    setPurchases((prev) => prev.filter((p) => p.id !== id));
+    showToast('Purchase entry deleted', 'info');
+  };
+
+  // Expenditure Management (ExpenditureTab)
+  const saveExpenditure = (exp) => {
+    if (exp.id) {
+      setExpenditures((prev) => prev.map((e) => (e.id === exp.id ? exp : e)));
+      showToast('Expense updated!');
+    } else {
+      const newExp = {
+        id: Date.now(),
+        description: exp.description,
+        amount: parseFloat(exp.amount),
+        date: exp.date || new Date().toLocaleDateString('en-GB'),
+        dateTime: new Date().toISOString(),
+      };
+      setExpenditures((prev) => [newExp, ...prev]);
+      showToast('Expense added successfully!');
+    }
+  };
+
+  const deleteExpenditure = (id) => {
+    setExpenditures((prev) => prev.filter((e) => e.id !== id));
+    showToast('Expense deleted', 'info');
+  };
+
+  // Customer Management (CustomerTab)
+  const saveCustomer = (cust) => {
+    if (cust.id) {
+      setCustomers((prev) => prev.map((c) => (c.id === cust.id ? cust : c)));
+      showToast('Customer profile updated!');
+    } else {
+      const newCust = {
+        id: Date.now(),
+        name: cust.name,
+        mobile: cust.mobile,
+        lastVisit: new Date().toLocaleDateString('en-GB'),
+      };
+      setCustomers((prev) => [...prev, newCust]);
+      showToast('Customer registered!');
+    }
+  };
+
+  const deleteCustomer = (id) => {
+    setCustomers((prev) => prev.filter((c) => c.id !== id));
+    showToast('Customer removed', 'info');
+  };
+
+  // Inventory Stock (InventoryTab)
+  const addOpeningStock = (rows) => {
+    rows.forEach((r) => {
+      if (!r.itemName || !r.quantity) return;
+      setInventory((prev) => {
+        const existing = prev.find(
+          (inv) => inv.itemCode === r.itemCode || inv.itemName.toLowerCase() === r.itemName.toLowerCase()
+        );
+        const qty = parseFloat(r.quantity) || 0;
+        const cost = parseFloat(r.costPrice) || 0;
+        const mrp = parseFloat(r.mrp) || 0;
+        if (existing) {
+          return prev.map((inv) =>
+            inv.id === existing.id
+              ? {
+                  ...inv,
+                  availableQty: inv.availableQty + qty,
+                  costPrice: cost || inv.costPrice,
+                  mrp: mrp || inv.mrp,
+                  stockValue: (inv.availableQty + qty) * (cost || inv.costPrice),
+                }
+              : inv
+          );
+        } else {
+          return [
+            ...prev,
+            {
+              id: Date.now() + Math.random(),
+              itemCode: r.itemCode || '',
+              itemName: r.itemName,
+              availableQty: qty,
+              costPrice: cost,
+              mrp: mrp,
+              stockValue: qty * cost,
+            },
+          ];
+        }
+      });
+    });
+    showToast('Opening stock saved to inventory!');
+  };
+
+  const deleteInventoryStock = (id) => {
+    setInventory((prev) => prev.filter((inv) => inv.id !== id));
+    showToast('Stock item deleted from inventory', 'info');
+  };
+
+  // Sales / POS (SellTab)
+  const completeSale = (saleData) => {
+    const newSale = {
+      ...saleData,
+      id: Date.now(),
+      billId: saleData.billId || `BILL-${Date.now().toString().slice(-6)}`,
+      dateStr: new Date().toLocaleDateString('en-GB'),
+      timeStr: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      dateTime: new Date().toISOString(),
+      isDeleted: false,
     };
 
-    setInvoices((prev) => [newInv, ...prev]);
+    setSales((prev) => [newSale, ...prev]);
 
-    // Deduct stock in inventory
-    invoiceData.items.forEach((sold) => {
+    // Deduct stock in Inventory
+    saleData.items.forEach((sold) => {
       setInventory((prev) =>
         prev.map((inv) => {
-          if (inv.itemCode === sold.code) {
-            return { ...inv, stock: Math.max(0, inv.stock - sold.qty) };
+          if (inv.itemCode === sold.code || inv.itemName.toLowerCase() === sold.name.toLowerCase()) {
+            const rem = Math.max(0, inv.availableQty - sold.qty);
+            return { ...inv, availableQty: rem, stockValue: rem * inv.costPrice };
           }
           return inv;
         })
       );
     });
 
-    // Update Customer stats if customer exists
-    if (invoiceData.customerMobile) {
+    // Auto-register / update Customer
+    if (saleData.customerMobile) {
       setCustomers((prev) => {
-        const existing = prev.find((c) => c.phone === invoiceData.customerMobile);
-        if (existing) {
+        const found = prev.find((c) => c.mobile === saleData.customerMobile);
+        if (found) {
           return prev.map((c) =>
-            c.phone === invoiceData.customerMobile
-              ? {
-                  ...c,
-                  totalBills: c.totalBills + 1,
-                  totalSpend: c.totalSpend + invoiceData.grandTotal,
-                  lastVisit: newInv.date,
-                }
+            c.mobile === saleData.customerMobile
+              ? { ...c, name: saleData.customerName || c.name, lastVisit: newSale.dateStr }
               : c
           );
-        } else if (invoiceData.customerName) {
+        } else {
           return [
             ...prev,
             {
               id: Date.now(),
-              name: invoiceData.customerName,
-              phone: invoiceData.customerMobile,
-              address: '',
-              totalBills: 1,
-              totalSpend: invoiceData.grandTotal,
-              lastVisit: newInv.date,
+              name: saleData.customerName || 'Walk-in Customer',
+              mobile: saleData.customerMobile,
+              lastVisit: newSale.dateStr,
             },
           ];
         }
-        return prev;
       });
     }
 
-    return newInv;
+    return newSale;
   };
 
-  // Add Purchase
-  const addPurchase = (purchase) => {
-    const newPur = {
-      ...purchase,
+  const deleteSale = (billId) => {
+    setSales((prev) =>
+      prev.map((s) => (s.billId === billId ? { ...s, isDeleted: true } : s))
+    );
+    showToast(`Bill ${billId} moved to Recycle Bin`, 'info');
+  };
+
+  const restoreSale = (billId) => {
+    setSales((prev) =>
+      prev.map((s) => (s.billId === billId ? { ...s, isDeleted: false } : s))
+    );
+    showToast(`Bill ${billId} restored successfully!`);
+  };
+
+  // Hold Bills (SellTab)
+  const holdBill = (bill) => {
+    const held = {
+      ...bill,
       id: Date.now(),
-      invoiceNo: purchase.invoiceNo || `PUR-${8800 + purchases.length + 1}`,
-      date: purchase.date || new Date().toISOString().split('T')[0],
+      heldTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      dateStr: new Date().toLocaleDateString('en-GB'),
     };
-    setPurchases((prev) => [newPur, ...prev]);
-    showToast(`Purchase inward recorded (${newPur.invoiceNo})!`);
+    setHeldBills((prev) => [held, ...prev]);
+    showToast('Bill put on hold');
   };
 
-  // Add Expense
-  const addExpenditure = (exp) => {
-    const newExp = {
-      ...exp,
-      id: Date.now(),
-      date: exp.date || new Date().toISOString().split('T')[0],
-    };
-    setExpenditures((prev) => [newExp, ...prev]);
-    showToast(`Expense of ₹${exp.amount} recorded!`);
+  const resumeBill = (id) => {
+    const bill = heldBills.find((b) => b.id === id);
+    if (bill) {
+      setHeldBills((prev) => prev.filter((b) => b.id !== id));
+      return bill;
+    }
+    return null;
   };
 
-  const deleteExpenditure = (id) => {
-    setExpenditures((prev) => prev.filter((e) => e.id !== id));
-    showToast('Expense entry deleted', 'info');
+  const deleteHeldBill = (id) => {
+    setHeldBills((prev) => prev.filter((b) => b.id !== id));
+    showToast('Held bill deleted', 'info');
   };
 
-  // Reset to Demo Data
-  const resetToDemoData = () => {
-    setBusinessDetails(initialBusinessDetails);
-    setItems(initialItems);
-    setInventory(initialInventory);
-    setCustomers(initialCustomers);
-    setInvoices(initialInvoices);
-    setPurchases(initialPurchases);
-    setExpenditures(initialExpenditures);
-    setUsers(initialUsers);
-    showToast('All sample store data has been re-loaded!');
+  // User Management (Settings)
+  const addUser = (username, password) => {
+    if (!username || !password) return;
+    const exists = users.find((u) => u.username.toLowerCase() === username.trim().toLowerCase());
+    if (exists) {
+      // Reset password
+      setUsers((prev) =>
+        prev.map((u) => (u.username.toLowerCase() === username.trim().toLowerCase() ? { ...u, password } : u))
+      );
+      showToast(`Password updated for user "${username}"`);
+    } else {
+      setUsers((prev) => [...prev, { id: Date.now(), username: username.trim(), password }]);
+      showToast(`User "${username}" created!`);
+    }
+  };
+
+  const deleteUser = (id) => {
+    if (users.length <= 1) {
+      showToast('Cannot delete the last remaining user!', 'error');
+      return;
+    }
+    setUsers((prev) => prev.filter((u) => u.id !== id));
+    showToast('User removed', 'info');
   };
 
   return (
     <StoreContext.Provider
       value={{
+        currentUser,
+        login,
+        logout,
         activeTab,
         setActiveTab,
+        isSidebarCollapsed,
+        toggleSidebar,
         theme,
         setTheme,
         businessDetails,
         setBusinessDetails,
         items,
-        addItem,
-        updateItem,
+        saveItem,
         deleteItem,
         inventory,
-        adjustStock,
-        customers,
-        invoices,
-        createInvoice,
+        addOpeningStock,
+        deleteInventoryStock,
         purchases,
         addPurchase,
+        deletePurchase,
         expenditures,
-        addExpenditure,
+        saveExpenditure,
         deleteExpenditure,
+        customers,
+        saveCustomer,
+        deleteCustomer,
+        sales,
+        completeSale,
+        deleteSale,
+        restoreSale,
+        heldBills,
+        holdBill,
+        resumeBill,
+        deleteHeldBill,
         users,
-        receiptModalInvoice,
-        setReceiptModalInvoice,
-        a4ModalInvoice,
-        setA4ModalInvoice,
+        addUser,
+        deleteUser,
+        receiptModalSale,
+        setReceiptModalSale,
+        a4ModalSale,
+        setA4ModalSale,
         toast,
         showToast,
-        resetToDemoData,
       }}
     >
       {children}
