@@ -1,0 +1,16 @@
+# Normalize line endings
+* text=auto
+
+# Language stats
+**/poppler/** linguist-vendored
+*.spec linguist-language=Python
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.pdf binary
+*.ttf binary
+*.TTF binary
+*.dll binary

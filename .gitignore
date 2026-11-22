@@ -1,0 +1,30 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# Build & Distribution
+build/
+dist/
+dist_installer/
+*.spec.bak
+
+# Node.js dependencies & runtime sessions
+whatsapp_bridge/node_modules/
+whatsapp_bridge/auth_session/
+*.log
+
+# Database files
+*.db
+*.sqlite3
+
+# IDE & OS files
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
