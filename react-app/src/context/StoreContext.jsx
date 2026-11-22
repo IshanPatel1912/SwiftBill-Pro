@@ -61,7 +61,16 @@ export const StoreProvider = ({ children }) => {
   ];
 
   const [businessDetails, setBusinessDetails] = useState(() => loadState('business', defaultBusiness));
-  const [users, setUsers] = useState(() => loadState('users', defaultUsers));
+  const [users, setUsers] = useState(() => {
+    const loaded = loadState('users', defaultUsers);
+    if (Array.isArray(loaded) && loaded.length > 0) {
+      return loaded.map((u) => ({
+        ...u,
+        password: u.password || 'admin'
+      }));
+    }
+    return defaultUsers;
+  });
 
   // Store data tables - starting completely clean (zero demo data)
   const [items, setItems] = useState(() => loadState('items', []));
@@ -140,32 +149,26 @@ export const StoreProvider = ({ children }) => {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // Auth Methods - Robust authentication supporting both admin/admin and admin/admin123
+  // Auth Methods - Strict password authentication (rejects invalid passwords)
   const login = (username, password) => {
     const trimmedUser = (username || '').trim().toLowerCase();
     const trimmedPass = (password || '').trim();
 
-    // 1. Built-in instant login for admin
-    if (trimmedUser === 'admin' && (trimmedPass === 'admin' || trimmedPass === 'admin123')) {
-      const adminUser = { id: 1, username: 'admin' };
-      setCurrentUser(adminUser);
-      localStorage.setItem('swiftbill_auth_user', JSON.stringify(adminUser));
-      showToast('Welcome back, admin!');
-      return true;
-    }
+    if (!trimmedUser || !trimmedPass) return false;
 
-    // 2. Check registered users list
+    // Find registered user by username
     const found = users.find(
-      (u) =>
-        u.username?.toLowerCase() === trimmedUser &&
-        (!u.password || u.password === trimmedPass || trimmedPass === 'admin' || trimmedPass === 'admin123')
+      (u) => u.username?.toLowerCase() === trimmedUser
     );
 
     if (found) {
-      setCurrentUser(found);
-      localStorage.setItem('swiftbill_auth_user', JSON.stringify(found));
-      showToast(`Welcome back, ${found.username}!`);
-      return true;
+      const correctPassword = found.password || 'admin';
+      if (trimmedPass === correctPassword) {
+        setCurrentUser(found);
+        localStorage.setItem('swiftbill_auth_user', JSON.stringify(found));
+        showToast(`Welcome back, ${found.username}!`);
+        return true;
+      }
     }
 
     return false;

@@ -4,28 +4,55 @@ Supports Light Mode, Dark Mode, and Automatic System Theme Detection (Windows 10
 """
 
 import os
+import sys
+import base64
 import configparser
 import logging
-from PyQt6.QtWidgets import QApplication, QCalendarWidget
+from PyQt6.QtWidgets import QApplication, QCalendarWidget, QComboBox
 from PyQt6.QtGui import QPalette, QColor, QFont
 from PyQt6.QtCore import Qt, QObject, QEvent
 
 logger = logging.getLogger(__name__)
 
 class CalendarConfigFilter(QObject):
-    """Global filter to ensure modern layout on all pop-up and inline calendar widgets."""
+    """Global filter to ensure modern layout on all pop-up and inline calendar widgets and dropdown views."""
     def eventFilter(self, obj, event):
-        if event.type() == QEvent.Type.Show and isinstance(obj, QCalendarWidget):
-            try:
-                obj.setVerticalHeaderFormat(QCalendarWidget.VerticalHeaderFormat.NoVerticalHeader)
-            except Exception:
-                pass
+        if event.type() == QEvent.Type.Show:
+            if isinstance(obj, QCalendarWidget):
+                try:
+                    obj.setVerticalHeaderFormat(QCalendarWidget.VerticalHeaderFormat.NoVerticalHeader)
+                    obj.setMinimumSize(310, 260)
+                except Exception:
+                    pass
+            elif isinstance(obj, QComboBox):
+                try:
+                    if obj.view():
+                        obj.view().setFocusPolicy(Qt.FocusPolicy.NoFocus)
+                except Exception:
+                    pass
         return super().eventFilter(obj, event)
 
 _calendar_filter_installed = False
 
-CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.ini")
-ASSETS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets").replace("\\", "/")
+if getattr(sys, 'frozen', False):
+    APP_ROOT = getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
+else:
+    APP_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+CONFIG_PATH = os.path.join(APP_ROOT, "config.ini")
+ASSETS_DIR = os.path.join(APP_ROOT, "assets").replace("\\", "/")
+
+def ensure_assets():
+    """Ensure essential visual assets exist on disk for crisp rendering."""
+    try:
+        os.makedirs(ASSETS_DIR, exist_ok=True)
+        check_path = os.path.join(ASSETS_DIR, "check_white.png")
+        if not os.path.exists(check_path) or os.path.getsize(check_path) == 0:
+            b64_check = "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAArklEQVQ4jdXPuwkCURSEYV0fG28mGBjYgR0YaiGWYWYpdqFYhQZiINiCIIL6GXjARdbHGggOXLicc/5hplL5O6GO5Fu4gw2WqJeFM6zctC2VAikWAe/RKzpK0CiYVzEN+IRBEdyIXmu0HnYTd42eRUywi6MZajEf5eDJu559nON4jGFEFhWqLw3CZBzABYf4L5C+hcOghnku9hLZR3DOpI1jvG4pOGeSovkV/HNdAZ658LJrvi0YAAAAAElFTkSuQmCC"
+            with open(check_path, "wb") as f:
+                f.write(base64.b64decode(b64_check))
+    except Exception as e:
+        logger.error(f"Failed to verify assets: {e}")
 
 def is_system_dark() -> bool:
     """Detect if Windows system theme is set to Dark Mode."""
@@ -116,6 +143,7 @@ def get_palette(theme: str) -> QPalette:
 
 def get_qss(theme: str) -> str:
     """Returns complete, modern QSS styling for all tabs and dialogs."""
+    ensure_assets()
     check_icon = f"{ASSETS_DIR}/check_white.png"
     chevron_down = f"{ASSETS_DIR}/chevron_down_light.png" if theme == "dark" else f"{ASSETS_DIR}/chevron_down_dark.png"
     chevron_left = f"{ASSETS_DIR}/chevron_left_white.png"
@@ -247,7 +275,7 @@ def get_qss(theme: str) -> str:
         }}
 
         QComboBox::down-arrow {{
-            image: url({chevron_down});
+            image: url("{chevron_down}");
             width: 10px;
             height: 10px;
         }}
@@ -269,6 +297,13 @@ def get_qss(theme: str) -> str:
             padding: 4px 10px;
             border-radius: 4px;
             color: #f8fafc;
+            border: none;
+            outline: none;
+        }}
+
+        QComboBox QAbstractItemView::item:focus {{
+            border: none;
+            outline: none;
         }}
 
         QComboBox QAbstractItemView::item:selected {{
@@ -356,7 +391,7 @@ def get_qss(theme: str) -> str:
         QCheckBox::indicator:checked {{
             background-color: #0284c7;
             border-color: #0284c7;
-            image: url({check_icon});
+            image: url("{check_icon}");
         }}
 
         /* Scrollbars */
@@ -426,7 +461,8 @@ def get_qss(theme: str) -> str:
             background-color: #0f172a;
             border-top-left-radius: 8px;
             border-top-right-radius: 8px;
-            min-height: 38px;
+            min-height: 32px;
+            max-height: 34px;
             padding: 2px 6px;
         }}
 
@@ -452,14 +488,14 @@ def get_qss(theme: str) -> str:
 
         QCalendarWidget #qt_calendar_prevmonth {{
             qproperty-icon: none;
-            image: url({chevron_left});
+            image: url("{chevron_left}");
             width: 14px;
             height: 14px;
         }}
 
         QCalendarWidget #qt_calendar_nextmonth {{
             qproperty-icon: none;
-            image: url({chevron_right});
+            image: url("{chevron_right}");
             width: 14px;
             height: 14px;
         }}
@@ -658,7 +694,7 @@ def get_qss(theme: str) -> str:
         }}
 
         QComboBox::down-arrow {{
-            image: url({chevron_down});
+            image: url("{chevron_down}");
             width: 10px;
             height: 10px;
         }}
@@ -680,6 +716,13 @@ def get_qss(theme: str) -> str:
             padding: 4px 10px;
             border-radius: 4px;
             color: #0f172a;
+            border: none;
+            outline: none;
+        }}
+
+        QComboBox QAbstractItemView::item:focus {{
+            border: none;
+            outline: none;
         }}
 
         QComboBox QAbstractItemView::item:selected {{
@@ -767,7 +810,7 @@ def get_qss(theme: str) -> str:
         QCheckBox::indicator:checked {{
             background-color: #0284c7;
             border-color: #0284c7;
-            image: url({check_icon});
+            image: url("{check_icon}");
         }}
 
         /* Scrollbars */
@@ -837,7 +880,8 @@ def get_qss(theme: str) -> str:
             background-color: #0284c7;
             border-top-left-radius: 8px;
             border-top-right-radius: 8px;
-            min-height: 38px;
+            min-height: 32px;
+            max-height: 34px;
             padding: 2px 6px;
         }}
 
@@ -867,14 +911,14 @@ def get_qss(theme: str) -> str:
 
         QCalendarWidget #qt_calendar_prevmonth {{
             qproperty-icon: none;
-            image: url({chevron_left});
+            image: url("{chevron_left}");
             width: 14px;
             height: 14px;
         }}
 
         QCalendarWidget #qt_calendar_nextmonth {{
             qproperty-icon: none;
-            image: url({chevron_right});
+            image: url("{chevron_right}");
             width: 14px;
             height: 14px;
         }}
