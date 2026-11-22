@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
+import { getTodayDateString } from '../utils/dateUtils';
 import {
   Search,
   Printer,
@@ -17,7 +18,7 @@ export const FindBillView = () => {
   const [searchBy, setSearchBy] = useState('Bill ID');
   const [statusFilter, setStatusFilter] = useState('All Status');
   const [searchTerm, setSearchTerm] = useState('');
-  const [dateFilter, setDateFilter] = useState('');
+  const [dateFilter, setDateFilter] = useState(() => getTodayDateString());
   const [showRecycleBin, setShowRecycleBin] = useState(false);
   const [selectedBillId, setSelectedBillId] = useState(null);
 

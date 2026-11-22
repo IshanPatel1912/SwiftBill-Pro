@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { getTodayDateString, getTodayFormatted } from '../utils/dateUtils';
 
 // Reset any old v1 mock data stored in the browser's localStorage
 try {
@@ -203,6 +204,55 @@ export const StoreProvider = ({ children }) => {
     showToast('Item deleted', 'info');
   };
 
+  const importItemsBulk = (itemsList) => {
+    let added = 0;
+    let updated = 0;
+    let skipped = 0;
+
+    setItems((prev) => {
+      const copy = [...prev];
+      itemsList.forEach((it) => {
+        const code = (it.itemCode || '').toString().trim();
+        const name = (it.name || '').trim();
+        if (!code || !name) {
+          skipped++;
+          return;
+        }
+
+        const mrp = parseFloat(it.mrp) || 0;
+        const unit = it.unit || 'piece';
+
+        const existingIdx = copy.findIndex(
+          (x) => x.itemCode?.toString() === code || x.name?.toLowerCase() === name.toLowerCase()
+        );
+
+        if (existingIdx >= 0) {
+          copy[existingIdx] = {
+            ...copy[existingIdx],
+            itemCode: code,
+            name,
+            mrp,
+            unit,
+          };
+          updated++;
+        } else {
+          copy.push({
+            id: Date.now() + Math.random(),
+            itemCode: code,
+            name,
+            mrp,
+            unit,
+          });
+          added++;
+        }
+      });
+      return copy;
+    });
+
+    showToast(`Excel Import: ${added} added, ${updated} updated, ${skipped} skipped.`);
+    return { added, updated, skipped };
+  };
+
   // Purchase Management (PurchaseTab)
   const addPurchase = (purchaseData, addToInventory = true) => {
     const newPur = {
@@ -252,6 +302,96 @@ export const StoreProvider = ({ children }) => {
   const deletePurchase = (id) => {
     setPurchases((prev) => prev.filter((p) => p.id !== id));
     showToast('Purchase entry deleted', 'info');
+  };
+
+  const importPurchasesBulk = (purchaseList) => {
+    let processed = 0;
+    let totalValue = 0;
+    let skipped = 0;
+    const nowIso = new Date().toISOString();
+    const todayFormatted = getTodayFormatted();
+
+    const newPurchases = [];
+    const invUpdates = [];
+
+    purchaseList.forEach((p) => {
+      const code = (p.itemCode || '').toString().trim();
+      const qty = parseFloat(p.quantity) || 0;
+      if (!code || qty <= 0) {
+        skipped++;
+        return;
+      }
+
+      // Lookup item in items catalog or existing inventory
+      const master = items.find((i) => i.itemCode?.toString() === code);
+      const name = p.itemName?.trim() || master?.name || `Item-${code}`;
+      const cost = parseFloat(p.costPrice) || 0;
+      const mrp = parseFloat(p.mrp) || master?.mrp || 0;
+      const unit = p.unit || master?.unit || 'piece';
+      const track = p.trackInventory !== false;
+
+      const amt = qty * cost;
+      totalValue += amt;
+
+      newPurchases.push({
+        id: Date.now() + Math.random(),
+        itemCode: code,
+        itemName: name,
+        quantity: qty,
+        costPrice: cost,
+        mrp,
+        unit,
+        inStock: track ? 'Yes' : 'No',
+        dateTime: nowIso,
+        dateStr: todayFormatted,
+      });
+
+      if (track) {
+        invUpdates.push({ code, name, qty, cost, mrp, unit });
+      }
+
+      processed++;
+    });
+
+    if (newPurchases.length > 0) {
+      setPurchases((prev) => [...newPurchases, ...prev]);
+    }
+
+    if (invUpdates.length > 0) {
+      setInventory((prev) => {
+        const copy = [...prev];
+        invUpdates.forEach((up) => {
+          const idx = copy.findIndex(
+            (inv) => inv.itemCode?.toString() === up.code || inv.itemName?.toLowerCase() === up.name.toLowerCase()
+          );
+          if (idx >= 0) {
+            const current = copy[idx];
+            const newQty = current.availableQty + up.qty;
+            copy[idx] = {
+              ...current,
+              availableQty: newQty,
+              costPrice: up.cost || current.costPrice,
+              mrp: up.mrp || current.mrp,
+              stockValue: newQty * (up.cost || current.costPrice),
+            };
+          } else {
+            copy.push({
+              id: Date.now() + Math.random(),
+              itemCode: up.code,
+              itemName: up.name,
+              availableQty: up.qty,
+              costPrice: up.cost,
+              mrp: up.mrp,
+              stockValue: up.qty * up.cost,
+            });
+          }
+        });
+        return copy;
+      });
+    }
+
+    showToast(`Bulk Purchase: ${processed} items processed (₹${totalValue.toLocaleString('en-IN')})`);
+    return { processed, totalValue, skipped };
   };
 
   // Expenditure Management (ExpenditureTab)
@@ -482,12 +622,14 @@ export const StoreProvider = ({ children }) => {
         items,
         saveItem,
         deleteItem,
+        importItemsBulk,
         inventory,
         addOpeningStock,
         deleteInventoryStock,
         purchases,
         addPurchase,
         deletePurchase,
+        importPurchasesBulk,
         expenditures,
         saveExpenditure,
         deleteExpenditure,

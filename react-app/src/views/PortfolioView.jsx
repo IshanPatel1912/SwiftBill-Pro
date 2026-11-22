@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
+import { getTodayDateString } from '../utils/dateUtils';
 import {
   PieChart,
   Calendar,
@@ -14,11 +15,8 @@ export const PortfolioView = () => {
 
   const [period, setPeriod] = useState('all'); // day, month, year, all
   const [selectedReportName, setSelectedReportName] = useState(null);
-  const [startDate, setStartDate] = useState(() => {
-    const d = new Date();
-    return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
-  });
-  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [startDate, setStartDate] = useState(() => getTodayDateString());
+  const [endDate, setEndDate] = useState(() => getTodayDateString());
 
   // Calculations based on period
   const now = new Date();

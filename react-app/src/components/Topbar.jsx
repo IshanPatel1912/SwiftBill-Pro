@@ -4,7 +4,6 @@ import {
   Sun,
   Moon,
   Laptop,
-  Menu,
   Printer,
   Smartphone,
   LogOut
@@ -16,23 +15,13 @@ export const Topbar = () => {
     setTheme,
     businessDetails,
     currentUser,
-    logout,
-    toggleSidebar,
-    isSidebarCollapsed
+    logout
   } = useStore();
 
   return (
     <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-20">
-      {/* Left: Sidebar Toggle + App Title */}
+      {/* Left: App Title */}
       <div className="flex items-center space-x-3">
-        <button
-          onClick={toggleSidebar}
-          title={isSidebarCollapsed ? "Open navigation" : "Close navigation (more screen space)"}
-          className="p-2 rounded-xl text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-
         <div>
           <div className="flex items-center space-x-2">
             <span className="font-bold text-sm sm:text-base text-slate-900 dark:text-white tracking-tight">

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
+import { getTodayDateString } from '../utils/dateUtils';
 import {
   Receipt,
   Trash2,
@@ -14,8 +15,8 @@ export const ExpendituresView = () => {
   const [amount, setAmount] = useState('');
   const [editingId, setEditingId] = useState(null);
 
-  // Filter
-  const [dateFilter, setDateFilter] = useState('');
+  // Filter - Defaults to Today matching desktop Python
+  const [dateFilter, setDateFilter] = useState(() => getTodayDateString());
   const [selectedId, setSelectedId] = useState(null);
 
   const handleSave = (e) => {

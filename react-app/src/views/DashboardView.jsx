@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
+import { getTodayDateString } from '../utils/dateUtils';
 import {
   Home,
   RefreshCw,
@@ -10,7 +11,7 @@ import {
 export const DashboardView = () => {
   const { purchases, expenditures } = useStore();
 
-  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(() => getTodayDateString());
 
   // Filter today's purchases
   const datePurchases = purchases.filter((p) => p.dateTime?.startsWith(selectedDate));

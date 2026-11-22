@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useStore } from '../context/StoreContext';
 import {
   Tag,
@@ -11,10 +11,11 @@ import {
 } from 'lucide-react';
 
 export const ItemsView = () => {
-  const { items, saveItem, deleteItem, showToast } = useStore();
+  const { items, saveItem, deleteItem, importItemsBulk, showToast } = useStore();
 
   const [search, setSearch] = useState('');
   const [selectedItem, setSelectedItem] = useState(null);
+  const fileInputRef = useRef(null);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -88,19 +89,142 @@ export const ItemsView = () => {
     handleClear();
   };
 
-  const handleDownloadSample = () => {
-    const csvContent = "item_code,item_name,mrp,qty_type\n1,Sample Item 1,100.00,piece\n2,Sample Item 2,250.00,kg\n";
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = "item_master_sample.csv";
-    a.click();
-    showToast('Downloaded sample excel/csv template');
+  const handleDownloadSample = async () => {
+    try {
+      const XLSX = await import('xlsx');
+      const headers = ["item_code", "name", "mrp", "qty_type"];
+      const sampleData = [
+        headers,
+        ["1", "Sugar M-30", 45.0, "kg"],
+        ["2", "Basmati Rice 1kg", 95.0, "kg"],
+        ["3", "Sunflower Oil 1L", 140.0, "litre"],
+        ["4", "Amul Butter 100g", 58.0, "piece"],
+        ["5", "Parle-G Biscuit 250g", 25.0, "packet"],
+        ["6", "Milk Pouch 500ml", 32.0, "packet"],
+        ["7", "Atta / Wheat Flour", 40.0, "kg"],
+        ["8", "Bath Soap 125g", 35.0, "piece"]
+      ];
+
+      const ws = XLSX.utils.aoa_to_sheet(sampleData);
+      ws['!cols'] = [{ wch: 14 }, { wch: 28 }, { wch: 16 }, { wch: 14 }];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Items");
+      XLSX.writeFile(wb, "Sample_Items_Catalog.xlsx");
+      showToast('Sample Excel catalog downloaded successfully!');
+    } catch (e) {
+      showToast(`Failed to generate sample Excel: ${e.message}`, 'error');
+    }
+  };
+
+  const handleImportExcelClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const XLSX = await import('xlsx');
+        const bstr = evt.target.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+
+        if (!rows || rows.length < 2) {
+          showToast('Excel file has no data rows. Must contain header + data.', 'error');
+          return;
+        }
+
+        // Determine column indexes from header
+        const rawHeaders = rows[0] || [];
+        const headers = rawHeaders.map((h) =>
+          String(h || '').toLowerCase().replace(/[\s_.]/g, '')
+        );
+
+        let codeIdx = -1;
+        let nameIdx = -1;
+        let mrpIdx = -1;
+        let unitIdx = -1;
+
+        headers.forEach((h, idx) => {
+          if (h.includes('code')) codeIdx = idx;
+          else if (h.includes('name') || h.includes('title') || h.includes('item')) nameIdx = idx;
+          else if (h.includes('mrp') || h.includes('price') || h.includes('rate')) mrpIdx = idx;
+          else if (h.includes('type') || h.includes('unit') || h.includes('qty')) unitIdx = idx;
+        });
+
+        // Fallbacks
+        if (codeIdx === -1 && headers.length > 0) codeIdx = 0;
+        if (nameIdx === -1 && headers.length > 1) nameIdx = 1;
+        if (mrpIdx === -1 && headers.length > 2) mrpIdx = 2;
+        if (unitIdx === -1 && headers.length > 3) unitIdx = 3;
+
+        if (codeIdx === -1 || nameIdx === -1) {
+          showToast("Could not locate 'item_code' and 'name' columns in the Excel file.", 'error');
+          return;
+        }
+
+        const itemsList = [];
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          if (!row || row.length === 0 || !row.some((c) => c !== null && c !== undefined && c !== '')) continue;
+
+          let code = String(row[codeIdx] ?? '').trim();
+          if (code.endsWith('.0')) code = code.slice(0, -2);
+
+          const name = String(row[nameIdx] ?? '').trim();
+          if (!code || !name) continue;
+
+          let mrpVal = 0;
+          if (mrpIdx !== -1 && row[mrpIdx] !== undefined) {
+            const rawMrp = String(row[mrpIdx]).replace(/[₹,]/g, '').trim();
+            mrpVal = parseFloat(rawMrp) || 0;
+          }
+
+          let unitVal = 'piece';
+          if (unitIdx !== -1 && row[unitIdx]) {
+            unitVal = String(row[unitIdx]).trim().toLowerCase() || 'piece';
+          }
+
+          itemsList.push({
+            itemCode: code,
+            name,
+            mrp: mrpVal,
+            unit: unitVal,
+          });
+        }
+
+        if (itemsList.length === 0) {
+          showToast('No valid item rows found in file.', 'error');
+          return;
+        }
+
+        importItemsBulk(itemsList);
+      } catch (err) {
+        showToast(`Failed reading Excel file: ${err.message}`, 'error');
+      }
+    };
+    reader.readAsBinaryString(file);
   };
 
   return (
     <div className="p-4 sm:p-6 space-y-4 max-w-full">
+      {/* Hidden Excel File Input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept=".xlsx,.xls,.csv"
+        className="hidden"
+      />
+
       {/* --- TOP CONTROLS --- */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm flex flex-wrap items-center justify-between gap-3">
         <div className="flex-1 min-w-[260px] max-w-md">
@@ -116,7 +240,7 @@ export const ItemsView = () => {
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setSearch('')}
-            className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs"
+            className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs transition-colors"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             <span>Refresh</span>
@@ -124,10 +248,18 @@ export const ItemsView = () => {
 
           <button
             onClick={handleDownloadSample}
-            className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs"
+            className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs shadow-sm transition-colors"
           >
             <Download className="w-3.5 h-3.5" />
             <span>Download Sample Excel</span>
+          </button>
+
+          <button
+            onClick={handleImportExcelClick}
+            className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-colors"
+          >
+            <Upload className="w-3.5 h-3.5" />
+            <span>Import Items via Excel</span>
           </button>
         </div>
       </div>
