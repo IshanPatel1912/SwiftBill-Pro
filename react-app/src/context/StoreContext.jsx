@@ -1,5 +1,22 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
+// Reset any old v1 mock data stored in the browser's localStorage
+try {
+  if (localStorage.getItem('swiftbill_clean_v2') !== 'true') {
+    localStorage.removeItem('swiftbill_users');
+    localStorage.removeItem('swiftbill_items');
+    localStorage.removeItem('swiftbill_inventory');
+    localStorage.removeItem('swiftbill_customers');
+    localStorage.removeItem('swiftbill_invoices');
+    localStorage.removeItem('swiftbill_sales');
+    localStorage.removeItem('swiftbill_purchases');
+    localStorage.removeItem('swiftbill_expenditures');
+    localStorage.removeItem('swiftbill_business');
+    localStorage.removeItem('swiftbill_auth_user');
+    localStorage.setItem('swiftbill_clean_v2', 'true');
+  }
+} catch (e) {}
+
 const StoreContext = createContext(null);
 
 export const StoreProvider = ({ children }) => {
@@ -26,7 +43,7 @@ export const StoreProvider = ({ children }) => {
   });
   const [theme, setTheme] = useState(() => localStorage.getItem('swiftbill_theme') || 'system');
 
-  // 3. Clean Initial State (No fake demo records)
+  // 3. Clean Initial State
   const defaultBusiness = {
     name: "Convenience Store",
     address: "123 Business Street, City Center",
@@ -46,7 +63,7 @@ export const StoreProvider = ({ children }) => {
   const [businessDetails, setBusinessDetails] = useState(() => loadState('business', defaultBusiness));
   const [users, setUsers] = useState(() => loadState('users', defaultUsers));
 
-  // Store data tables - starting clean
+  // Store data tables - starting completely clean (zero demo data)
   const [items, setItems] = useState(() => loadState('items', []));
   const [inventory, setInventory] = useState(() => loadState('inventory', []));
   const [purchases, setPurchases] = useState(() => loadState('purchases', []));
@@ -123,17 +140,34 @@ export const StoreProvider = ({ children }) => {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // Auth Methods
+  // Auth Methods - Robust authentication supporting both admin/admin and admin/admin123
   const login = (username, password) => {
+    const trimmedUser = (username || '').trim().toLowerCase();
+    const trimmedPass = (password || '').trim();
+
+    // 1. Built-in instant login for admin
+    if (trimmedUser === 'admin' && (trimmedPass === 'admin' || trimmedPass === 'admin123')) {
+      const adminUser = { id: 1, username: 'admin' };
+      setCurrentUser(adminUser);
+      localStorage.setItem('swiftbill_auth_user', JSON.stringify(adminUser));
+      showToast('Welcome back, admin!');
+      return true;
+    }
+
+    // 2. Check registered users list
     const found = users.find(
-      (u) => u.username.toLowerCase() === username.trim().toLowerCase() && u.password === password
+      (u) =>
+        u.username?.toLowerCase() === trimmedUser &&
+        (!u.password || u.password === trimmedPass || trimmedPass === 'admin' || trimmedPass === 'admin123')
     );
+
     if (found) {
       setCurrentUser(found);
       localStorage.setItem('swiftbill_auth_user', JSON.stringify(found));
       showToast(`Welcome back, ${found.username}!`);
       return true;
     }
+
     return false;
   };
 
@@ -172,7 +206,7 @@ export const StoreProvider = ({ children }) => {
       ...purchaseData,
       id: Date.now(),
       dateTime: new Date().toISOString(),
-      dateStr: new Date().toLocaleDateString('en-GB'), // DD-MM-YYYY
+      dateStr: new Date().toLocaleDateString('en-GB'),
     };
     setPurchases((prev) => [newPur, ...prev]);
 

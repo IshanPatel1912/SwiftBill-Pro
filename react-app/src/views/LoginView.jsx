@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
-import { Store, Lock, User, AlertCircle, ArrowRight } from 'lucide-react';
+import { Store, Lock, User, AlertCircle, ArrowRight, KeyRound } from 'lucide-react';
 
 export const LoginView = () => {
   const { login } = useStore();
@@ -11,10 +11,16 @@ export const LoginView = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     setError('');
-    const success = login(username, password);
+    const success = login(username.trim(), password.trim());
     if (!success) {
-      setError('Invalid username or password. Please try again.');
+      setError('Invalid username or password. Please use admin / admin');
     }
+  };
+
+  const handleQuickFill = () => {
+    setUsername('admin');
+    setPassword('admin');
+    login('admin', 'admin');
   };
 
   return (
@@ -52,7 +58,7 @@ export const LoginView = () => {
                   type="text"
                   required
                   autoFocus
-                  placeholder="Username (e.g. admin)"
+                  placeholder="Username (admin)"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full pl-10 pr-3.5 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
@@ -69,7 +75,7 @@ export const LoginView = () => {
                 <input
                   type="password"
                   required
-                  placeholder="Password"
+                  placeholder="Password (admin)"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-10 pr-3.5 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
@@ -85,6 +91,23 @@ export const LoginView = () => {
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
+
+          {/* Quick-login assistance pill */}
+          <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/80 dark:border-slate-700/60 flex items-center justify-between text-xs">
+            <div>
+              <span className="text-[10px] text-slate-400 uppercase font-bold block">Default Login:</span>
+              <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">
+                admin / admin
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleQuickFill}
+              className="px-2.5 py-1 rounded-lg bg-brand-50 hover:bg-brand-100 dark:bg-brand-950 dark:hover:bg-brand-900 text-brand-700 dark:text-brand-300 font-bold text-[11px] transition-colors"
+            >
+              Quick Login
+            </button>
+          </div>
 
           <div className="pt-2 border-t border-slate-100 dark:border-slate-800 text-center">
             <span className="text-[11px] text-slate-400 font-mono">
