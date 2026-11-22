@@ -2,22 +2,31 @@
 __pycache__/
 *.py[cod]
 *$py.class
+**/__pycache__/
 
 # Virtual Environment
 venv/
 env/
 ENV/
+**/venv/
+**/env/
 
 # Build & Distribution
 build/
 dist/
 dist_installer/
+**/build/
+**/dist/
+**/dist_installer/
 *.spec.bak
 
 # Node.js dependencies & runtime sessions
-whatsapp_bridge/node_modules/
-whatsapp_bridge/auth_session/
+node_modules/
+**/node_modules/
+**/auth_session/
 *.log
+.vite/
+**/.vite/
 
 # Database files
 *.db

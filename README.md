@@ -1,165 +1,99 @@
-<div align="center">
+# SwiftBill Pro 🚀
+### Modern Retail Point-of-Sale (POS), Inventory & Store Billing Suite
 
-# 🏪 Convenience Store & Supermarket POS Billing System
+![Version](https://img.shields.io/badge/version-2.5.0-blue.svg)
+![Editions](https://img.shields.io/badge/editions-Desktop_Qt_%7C_Modern_React-emerald.svg)
+![Hardware](https://img.shields.io/badge/hardware-ESC%2FPOS_80mm_%7C_Barcode-orange.svg)
+![Microservice](https://img.shields.io/badge/whatsapp-Automated_PDF_Bridge-success.svg)
 
-**A modern, feature-rich Point-of-Sale (POS) and inventory management desktop software for retail marts, convenience stores, and supermarkets. Built with PyQt6, SQLite (SQLAlchemy), ReportLab, and ESC/POS thermal printing.**
-
-![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)
-![PyQt6](https://img.shields.io/badge/GUI-PyQt6-41CD52?logo=qt&logoColor=white)
-![SQLite](https://img.shields.io/badge/DB-SQLite%20%2B%20SQLAlchemy-003B57?logo=sqlite&logoColor=white)
-![Platform](https://img.shields.io/badge/platform-Windows-0078D6?logo=windows&logoColor=white)
-![WhatsApp](https://img.shields.io/badge/WhatsApp%20Bridge-Node.js%20%2B%20Baileys-339933?logo=node.js&logoColor=white)
-![Thermal](https://img.shields.io/badge/Printing-ESC%2FPOS%20Thermal%20%2B%20A4%20PDF-blueviolet)
-
-</div>
+**SwiftBill Pro** is a commercial-grade retail management and point-of-sale solution engineered for supermarkets, grocery stores, department outlets, and retail counters. Built with physical store operations and cashiers in mind, it provides instant barcode lookups, automated ESC/POS thermal printing, and digital WhatsApp receipt dispatch.
 
 ---
 
-## ✨ Highlights & Architecture
+## 📁 Repository Structure
 
-- 🎨 **Adaptive Light & Dark Themes**: Automatically detects your Windows system theme (`AppsUseLightTheme`) on launch, with a 1-click header switcher between `System Default (Auto)`, `Light Mode`, and `Dark Mode`.
-- ⚡ **High-Speed Counter POS**: Instant SKU/code lookups (codes `1`–`100`), auto-fill product catalog, live subtotal & discount calculation, and cash-change balance indicators.
-- 🖨️ **Dual Printing System**:
-  - **Direct Thermal Receipt Printing** (58mm and 80mm ESC/POS roll printers) directly over USB without external print dialogs.
-  - **Full-Page A4 Invoices** with business branding, customer details, and itemized layout via ReportLab.
-- 💬 **Integrated WhatsApp Service**: Standalone background Node.js microservice (`whatsapp_bridge`) powered by Baileys. One-time QR pairing saves session credentials locally; bills are delivered instantly in the background without browser automation.
-- 📦 **Real-Time Inventory Management**: Live inventory tracking that automatically decrements stock on sales, warns on low stock, and supports bulk opening stock entry with PDF exports.
-- 📈 **Product Profit Analytics**: Per-item sales volume, average selling price, average cost price, unit margins, total profit, and interactive visual breakdown.
-- 📊 **Financial Portfolio & Reports**: Period filtering (`Today`, `This Month`, `This Year`, `All Time`) with 5 dedicated export formats:
-  - Sell Report (PDF)
-  - Purchase Report (PDF)
-  - Expenditure Report (PDF)
-  - All-Over Statement (PDF)
-  - All-Over Financial Data (CSV)
-- 🔒 **User Management & Security**: Multi-user login control with bcrypt password hashing and user administration inside Settings.
-- 🧪 **Pre-Seeded Test Data**: Ships with 20 realistic store items, live inventory stock, sales invoices, purchase logs, daily expenses, and customer records ready for immediate out-of-the-box testing.
+The project is cleanly divided into two dedicated editions:
+
+```text
+SwiftBill-Pro/
+├── 📁 desktop-python/          # Standalone Windows Desktop Edition (PyQt6)
+│   ├── main.py                 # Core application entry point
+│   ├── database.py             # SQLite ORM & schema definitions
+│   ├── tabs/                   # 10 Dedicated Retail Management Tabs
+│   ├── modules/                # Thermal printing, theme manager, PDF engine
+│   ├── whatsapp_bridge/        # Node.js Baileys / WhatsApp web microservice
+│   ├── build_exe.py            # Automated PyInstaller & Inno Setup compiler
+│   └── run.bat                 # One-click desktop app launcher
+│
+├── 📁 react-app/               # Modern Store UI Edition (React 18 + Vite + Tailwind)
+│   ├── src/views/              # All 10 store tabs fully implemented in React
+│   ├── src/components/         # Sidebar, Topbar, 80mm Photorealistic Receipt Modal
+│   ├── src/context/            # Interactive localStorage state store & demo dataset
+│   ├── run.bat                 # One-click React dev server & browser launcher
+│   └── package.json            # Vite, Tailwind CSS, Lucide icons, canvas-confetti
+│
+├── run_desktop.bat             # Root shortcut to launch Python Desktop Edition
+├── run_react.bat               # Root shortcut to launch Modern React Edition
+└── README.md                   # Documentation & overview
+```
 
 ---
 
-## 🖥️ Tabs Walkthrough
+## ⚡ Quick Start
 
-| Tab | Key Capabilities |
+### Option 1: Modern React UI Edition
+To experience the high-performance modern web interface:
+1. Double-click `run_react.bat` (or inside `react-app/`, run `run.bat`).
+2. Alternatively via terminal:
+   ```bash
+   cd react-app
+   npm install
+   npm run dev
+   ```
+3. Opens automatically at `http://localhost:5173`.
+4. Comes pre-loaded with realistic supermarket catalog items, stock records, customers, and invoices!
+
+### Option 2: Desktop Python Edition (Production POS)
+To launch the native Windows desktop terminal with direct hardware ESC/POS spooling:
+1. Double-click `run_desktop.bat` (or inside `desktop-python/`, run `run.bat`).
+2. Alternatively via terminal:
+   ```bash
+   cd desktop-python
+   venv\Scripts\python.exe main.py
+   ```
+
+---
+
+## 🌟 Feature Breakdown Across Both Editions
+
+| Module / Tab | Capabilities |
 |---|---|
-| 💰 **POS / Sell** | Counter billing interface, product autocomplete, customer phone, discount % and amount, paid status, thermal receipt printing, A4 invoice printing, and WhatsApp share. |
-| 🏷️ **Items** | Master item dictionary (Item Code, Name, MRP, Unit Type) with Excel sample download & bulk Excel import. |
-| 🛒 **Purchase** | Stock intake records (Date, Code, Name, Qty, Cost, MRP, In-Stock indicator), date range filters, and bulk Excel purchase import. |
-| 💸 **Expenditure** | Daily store operating expenses (Description, Amount, Date) with date filtering and expense management. |
-| 🔍 **Find Bill** | Search past invoices by Bill ID, Customer, or Date; reprint thermal receipts; reprint A4 invoices; export to PDF; and recycle bin management. |
-| 📦 **Inventory** | Stock catalog with real-time quantities, cost vs. MRP margins, stock valuation, and PDF stock export. |
-| 📈 **Analytics** | SKU-level profitability, sold quantities, unit margins, and sales contribution chart. |
-| 📊 **Portfolio** | High-level P&L dashboard (Sales, Purchases, Expenses, Net Profit) across period filters with 5 export formats. |
-| 🏠 **Dashboard** | Daily KPI summary, today's sales counter, and active session revenue overview. |
-| 👥 **Customers** | Customer directory with purchase histories, contact records, and last-visit dates. |
-| ⚙️ **Settings** | Business details (Store name, address, phone, owner), printer selection (58mm / 80mm), WhatsApp device pairing, and user access management. |
+| **🛒 POS / Sell Terminal** | Rapid item code / barcode entry, quantity spinner, live subtotal & composite GST calculation, custom checkmark for "Mark as Paid", cash/UPI/card toggles, and `<F1>` instant thermal print. |
+| **📦 Items Master Catalog** | 20+ pre-seeded grocery/dairy products, category filter chips, search by barcode, cost price vs MRP margin %, and Add/Edit modals. |
+| **🏭 Inventory & Valuation** | Live on-hand stock counts, total stock valuation (cost) vs retail value (MRP), low-stock warning threshold alerts (< 10 units), and quick stock adjustment. |
+| **🚚 Purchases** | Inward stock intake from wholesale FMCG distributors, invoice number tracking, and delivery/payment logs. |
+| **🧾 Expenditures** | Log daily utility bills, thermal paper roll purchases, sanitization, and store maintenance costs. |
+| **🔍 Find Bill / Invoices** | Search historical bills by invoice number, customer phone, or date. Reprint 80mm receipts, preview A4 tax invoices, and dispatch WhatsApp PDFs. |
+| **📊 Analytics & Charts** | 7-day revenue trend chart, payment mode share (UPI vs Cash vs Card), and Top 5 fast-moving items leaderboard. |
+| **📈 Portfolio & Reports** | Consolidated profit & loss statement, gross margin %, and **5 one-click accountant export reports** (Sales, Purchases, GSTR-1 Tax, Inventory Valuation, and Daily Cash Settlement). |
+| **👥 Customers & Loyalty** | Customer directory, lifetime spend tracking, total store visits, and instant "Bill Now" shortcut. |
+| **⚙️ Store Settings** | Business name, address, contact, GSTIN, receipt header greeting & footer return policy, WhatsApp QR code pairing status, user management, and Light/Dark themes. |
 
 ---
 
-## ⌨️ Global Keyboard Shortcuts
-
-| Shortcut | Action |
-|---|---|
-| `F1` | Jump to **POS / Sell** tab immediately |
-| `F5` | Refresh data / Reset current tab form |
-| `Ctrl + S` | Save current bill / Save business settings / Save PDF |
-| `Ctrl + P` | Direct print A4 invoice |
-| `Delete` | Delete selected item / row in active tab |
-| `Enter` / `Return` | Quick add item / Search / Filter |
+## 🖨️ Hardware & Printing Support
+- **Thermal Receipt Printing**: Optimized for standard **80mm** (and compact **58mm**) thermal rolls with high-contrast monospaced layout, dashed separators, payment QR code, and barcode.
+- **WhatsApp Integration**: Integrated microservice automatically generates lightweight invoice PDFs and dispatches them directly to the customer's phone number without recurring API costs.
+- **Standalone Installer**: Includes Inno Setup configuration (`installer.iss`) to produce a single-file `BillingSystem_Setup.exe` with bundled portable Node.js and Poppler PDF libraries.
 
 ---
 
-## 🚀 Getting Started
-
-### Prerequisites
-1. **Windows 10 / 11 (64-bit)**
-2. **Python 3.11+**
-3. **Node.js 18+** (for WhatsApp Bridge service)
-
-### Installation
-
-```bash
-# 1. Clone repository
-git clone https://github.com/IshanPatel1912/Convenience_Billing_System.git
-cd Convenience_Billing_System
-
-# 2. Set up Python virtual environment
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
-
-# 3. Set up WhatsApp Bridge (optional, for WhatsApp bill delivery)
-cd whatsapp_bridge
-npm install
-cd ..
-
-# 4. Launch the application
-python main.py
-```
-
-### Default Login Credentials
-- **Admin**: `admin` / `admin123`
-- **Cashier**: `cashier1` / `cashier123`
-- **Manager**: `manager` / `manager123`
+## 🔒 Security & Offline Guarantee
+- Operates **100% offline** without requiring cloud database connectivity.
+- Cashier terminals operate with millisecond barcode response times.
+- State in the React edition persists via browser `localStorage` with a 1-click **Reset Demo Data** button for customer demonstrations.
 
 ---
 
-## 📦 Building Standalone Windows Executable & Installer
-
-To compile into a standalone `.exe` and single-file setup installer:
-
-```bash
-# Activate virtual environment
-venv\Scripts\activate
-
-# Run automated builder (PyInstaller + Inno Setup)
-python build_exe.py
-```
-
-The compiled standalone application will be generated in `dist/BillingSystem/BillingSystem.exe`, and the single-file installer in `dist_installer/BillingSystem_Setup.exe`.
-
----
-
-## 📁 Project Structure
-
-```
-Convenience_Billing_System/
-├── main.py                     # Application entry point & login dialog
-├── database.py                 # SQLAlchemy ORM models & database setup
-├── config.ini                  # Configuration (theme, printer, currency)
-├── requirements.txt            # Python dependencies
-├── BillingSystem.spec          # PyInstaller standalone build configuration
-├── installer.iss               # Inno Setup Windows installer script
-├── build_exe.py                # Automated PyInstaller compilation script
-├── run.bat                     # Quick launcher batch file
-├── start_whatsapp.bat          # WhatsApp service background runner
-├── app_icon.ico                # Application branding icon
-├── arial*.ttf                  # Embedded TrueType fonts for PDF generation
-├── assets/                     # Crisp vector UI icons (checkmarks, chevrons)
-├── modules/
-│   ├── logging_config.py       # Rotating log configuration
-│   ├── pdf_generator.py        # ReportLab PDF invoice & thermal generator
-│   ├── theme_manager.py        # Light/Dark theme & system theme detection
-│   └── whatsapp_service.py     # Python client bridge for WhatsApp microservice
-├── tabs/
-│   ├── sell_tab.py             # POS counter billing & thermal print integration
-│   ├── item_tab.py             # Master items catalog & Excel import
-│   ├── purchase_tab.py         # Purchase and stock intake tab
-│   ├── expenditure_tab.py      # Expense management tab
-│   ├── find_bill_tab.py        # Bill history, reprint, and PDF export
-│   ├── inventory_tab.py        # Inventory & stock management
-│   ├── analytics_tab.py        # Product profit & margin analytics
-│   ├── portfolio_tab.py        # Financial P&L summary and 5 report exports
-│   ├── dashboard_tab.py        # Overview KPI dashboard
-│   ├── customer_tab.py         # Customer records and history
-│   └── business_detail_tab.py  # Business profile & user management settings
-└── whatsapp_bridge/
-    ├── package.json            # Node.js dependencies (Baileys)
-    └── server.js               # Microservice handling QR pairing & messaging
-```
-
----
-
-## 👤 Author
-
-**Ishan Patel**  
-Undergraduate Student, Pandit Deendayal Energy University (PDEU)  
-GitHub: [@IshanPatel1912](https://github.com/IshanPatel1912)
+## 📜 License
+Proprietary Commercial Retail Software. Built for client deployment.
