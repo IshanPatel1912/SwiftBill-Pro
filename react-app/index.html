@@ -12,5 +12,24 @@
   <body class="bg-slate-50 dark:bg-slate-950 min-h-screen overflow-x-hidden font-sans">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <script>
+      (function() {
+        function ping() {
+          try {
+            var x = new XMLHttpRequest();
+            x.open("GET", "/__heartbeat?t=" + Date.now(), true);
+            x.send();
+          } catch(e) {}
+        }
+        ping();
+        try {
+          var blob = new Blob(["setInterval(function(){ postMessage(1); }, 1500);"], { type: "application/javascript" });
+          var worker = new Worker(URL.createObjectURL(blob));
+          worker.onmessage = function() { ping(); };
+        } catch(e) {
+          setInterval(ping, 1500);
+        }
+      })();
+    </script>
   </body>
 </html>
